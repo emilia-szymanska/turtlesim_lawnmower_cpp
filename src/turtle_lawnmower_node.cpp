@@ -10,6 +10,10 @@ class TurtleLawnmower
 	ros::NodeHandle nh_;
 	ros::Subscriber sub_;
  	ros::Publisher  pub_;
+	
+	bool rotate = false;
+	int direction = 1;	
+	float theta_goal = 3.13;
 
  	public:
   		TurtleLawnmower();
@@ -22,13 +26,12 @@ TurtleLawnmower::TurtleLawnmower()
 {
 	sub_ = nh_.subscribe("turtle1/pose", 1, &TurtleLawnmower::turtleCallback, this);
 	pub_ = nh_.advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 1);
-	//ros::service::waitForService("clear");  //this is optional
 
 	ros::ServiceClient client = nh_.serviceClient<turtlesim::TeleportAbsolute>("/turtle1/teleport_absolute");
 	turtlesim::TeleportAbsolute::Request req;
 	turtlesim::TeleportAbsolute::Response resp;
 
-	req.x = 1;
+	req.x = 7;
 	req.y = 1;
 	req.theta = 0;
 	
@@ -46,9 +49,38 @@ void TurtleLawnmower::turtleCallback(const turtlesim::Pose::ConstPtr& msg)
 {
 	ROS_INFO("Turtle lawnmower@ [%f, %f, %f]", msg->x, msg->y, msg->theta);
 
-  	geometry_msgs::Twist turtle_cmd_vel;
-  	turtle_cmd_vel.linear.x = 1;
-  	pub_.publish(turtle_cmd_vel);
+	geometry_msgs::Twist turtle_cmd_vel;
+  	
+	if(direction == 1 && msg->x >= 10 && rotate == false)
+	{
+		rotate = true;
+		direction = -1;
+
+	}
+
+	if(rotate)
+	{
+		if(theta_goal > msg->theta)
+		{
+  			turtle_cmd_vel.linear.x = 0.3;
+  			turtle_cmd_vel.angular.z = -1*direction*0.3;
+		}
+		else
+		{
+  			turtle_cmd_vel.linear.x = 1;
+  			turtle_cmd_vel.angular.z = 0;
+			rotate = false;
+
+		}
+		
+	}
+	else
+	{
+  		turtle_cmd_vel.linear.x = 1;
+	}
+
+  	
+	pub_.publish(turtle_cmd_vel);
 }
 
 
