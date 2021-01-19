@@ -8,8 +8,8 @@
 class TurtleLawnmower
 {
 	ros::NodeHandle nh_;
-	ros::Subscriber sub_;
- 	ros::Publisher  pub_;
+	ros::Subscriber pose_sub_;
+ 	ros::Publisher  cmd_pub_;
 	
 	bool rotate = false;
 	int direction = 1;	
@@ -24,88 +24,73 @@ class TurtleLawnmower
 
 TurtleLawnmower::TurtleLawnmower()
 {
-	sub_ = nh_.subscribe("turtle1/pose", 1, &TurtleLawnmower::turtleCallback, this);
-	pub_ = nh_.advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 1);
+	pose_sub_ = nh_.subscribe("turtle1/pose", 1, &TurtleLawnmower::turtleCallback, this);
+	cmd_pub_  = nh_.advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 1);
 
-	ros::ServiceClient client = nh_.serviceClient<turtlesim::TeleportAbsolute>("/turtle1/teleport_absolute");
+	ros::ServiceClient teleport_client = nh_.serviceClient<turtlesim::TeleportAbsolute>("/turtle1/teleport_absolute");
 	turtlesim::TeleportAbsolute::Request req;
 	turtlesim::TeleportAbsolute::Response resp;
-
-	req.x = 7;
-	req.y = 1;
+	req.x 	  = 1;
+	req.y 	  = 0.5;
 	req.theta = 0;
+	teleport_client.call(req, resp);
 	
-	bool success = client.call(req, resp);
-  	
-	std::cout << "Success: " << success << std::endl;
-	
-	ros::ServiceClient clearClient = nh_.serviceClient<std_srvs::Empty>("/clear");
+	ros::ServiceClient clear_client = nh_.serviceClient<std_srvs::Empty>("/clear");
   	std_srvs::Empty srv;
-  	clearClient.call(srv);
+  	clear_client.call(srv);
 }
 
 
 void TurtleLawnmower::turtleCallback(const turtlesim::Pose::ConstPtr& msg)
 {
 	ROS_INFO("Turtle lawnmower@ [%f, %f, %f]", msg->x, msg->y, msg->theta);
+	
+	if(msg->y >= 10.5 && (msg->x >= 10 || msg->x <= 1))
+	{
+		ROS_INFO("Turtle has finished its job! Shutting down the node...");
+		ros::shutdown();
+	}
 
 	geometry_msgs::Twist turtle_cmd_vel;
   	
-	if(direction == 1 && msg->x >= 10 && rotate == false)
-	{
-		rotate = true;
-		direction = -1;
-		theta_goal = 3.13;
-
-	}
 	
-	if(direction == -1 && msg->x <= 1 && rotate == false)
+	if(!rotate)
 	{
-		rotate = true;
-		direction = 1;
-		theta_goal = 0.01;
-
-	}
-
-	if(rotate)
-	{
-		if(theta_goal > msg->theta && direction == -1)
+  		turtle_cmd_vel.linear.x = 1;
+		// near the edge -> start rotating
+		if((direction == 1 && msg->x >= 10) || (direction == -1 && msg->x <= 1))	
 		{
-  			turtle_cmd_vel.linear.x = 0.3;
-  			turtle_cmd_vel.angular.z = /*-1*direction*/0.3;
+			rotate = true;
+			direction = -direction;
+			if(direction == -1) theta_goal = 3.13;
+			else theta_goal = 0.01;
 		}
-		else
-		{
-			if (theta_goal < msg->theta && direction == 1)
-			{
-  				turtle_cmd_vel.linear.x = 0.3;
-  				turtle_cmd_vel.angular.z = /*-1*direction*/-0.3;
-			}
-			else
-			{
-  				turtle_cmd_vel.linear.x = 1;
-  				turtle_cmd_vel.angular.z = 0;
-				rotate = false;
-			}
-
-		}
-		
 	}
 	else
 	{
-  		turtle_cmd_vel.linear.x = 1;
+		// don't stop spinning if theta is not close to 0 or PI
+		if((theta_goal > msg->theta && direction == -1) || (theta_goal < msg->theta && direction == 1))
+		{
+  			turtle_cmd_vel.linear.x = 0.3;
+  			turtle_cmd_vel.angular.z = -direction*0.9;
+		}
+		else 	// stop spinning 
+		{
+  			turtle_cmd_vel.linear.x = 1;
+  			turtle_cmd_vel.angular.z = 0;
+			rotate = false;
+		}
 	}
-
   	
-	pub_.publish(turtle_cmd_vel);
+	cmd_pub_.publish(turtle_cmd_vel);
 }
 
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "turtle_lawnmower_node");
-  TurtleLawnmower turle_mower;
-  ros::spin();
+	ros::init(argc, argv, "turtle_lawnmower_node");
+	TurtleLawnmower turle_mower;
+	ros::spin();
 
-  return 0;
+	return 0;
 }
