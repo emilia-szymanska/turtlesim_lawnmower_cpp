@@ -55,21 +55,38 @@ void TurtleLawnmower::turtleCallback(const turtlesim::Pose::ConstPtr& msg)
 	{
 		rotate = true;
 		direction = -1;
+		theta_goal = 3.13;
+
+	}
+	
+	if(direction == -1 && msg->x <= 1 && rotate == false)
+	{
+		rotate = true;
+		direction = 1;
+		theta_goal = 0.01;
 
 	}
 
 	if(rotate)
 	{
-		if(theta_goal > msg->theta)
+		if(theta_goal > msg->theta && direction == -1)
 		{
   			turtle_cmd_vel.linear.x = 0.3;
-  			turtle_cmd_vel.angular.z = -1*direction*0.3;
+  			turtle_cmd_vel.angular.z = /*-1*direction*/0.3;
 		}
 		else
 		{
-  			turtle_cmd_vel.linear.x = 1;
-  			turtle_cmd_vel.angular.z = 0;
-			rotate = false;
+			if (theta_goal < msg->theta && direction == 1)
+			{
+  				turtle_cmd_vel.linear.x = 0.3;
+  				turtle_cmd_vel.angular.z = /*-1*direction*/-0.3;
+			}
+			else
+			{
+  				turtle_cmd_vel.linear.x = 1;
+  				turtle_cmd_vel.angular.z = 0;
+				rotate = false;
+			}
 
 		}
 		
