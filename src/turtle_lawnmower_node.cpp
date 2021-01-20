@@ -4,6 +4,7 @@
 #include "turtlesim/TeleportAbsolute.h"
 #include "std_srvs/Empty.h"
 #include <iostream>
+#include <unistd.h>
 
 class TurtleLawnmower
 {
@@ -19,7 +20,6 @@ class TurtleLawnmower
   		TurtleLawnmower();
   		~TurtleLawnmower(){};
   		void turtleCallback(const turtlesim::Pose::ConstPtr& msg);
-		void position();
 };
 
 
@@ -36,30 +36,16 @@ TurtleLawnmower::TurtleLawnmower()
 	
 	teleport_client.call(req, resp);
 	
+	usleep(50000);
+
 	ros::service::waitForService("/clear");
 	ros::ServiceClient clear_client = nh_.serviceClient<std_srvs::Empty>("/clear");
-  	std_srvs::Empty srv;
+	std_srvs::Empty srv;
   	clear_client.call(srv);
 	
 	pose_sub_ = nh_.subscribe("turtle1/pose", 1, &TurtleLawnmower::turtleCallback, this);
 	cmd_pub_  = nh_.advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 1);
 
-}
-
-
-void TurtleLawnmower::position()
-{
-	ros::ServiceClient teleport_client = nh_.serviceClient<turtlesim::TeleportAbsolute>("/turtle1/teleport_absolute");
-	turtlesim::TeleportAbsolute::Request req;
-	turtlesim::TeleportAbsolute::Response resp;
-	req.x 	  = 1;
-	req.y 	  = 0.5;
-	req.theta = 0;
-	teleport_client.call(req, resp);
-	
-	ros::ServiceClient clear_client = nh_.serviceClient<std_srvs::Empty>("/clear");
-  	std_srvs::Empty srv;
-  	clear_client.call(srv);
 }
 
 
@@ -112,7 +98,6 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "turtle_lawnmower_node");
 	TurtleLawnmower turtle_mower;
-//	turtle_mower.position();
 	ros::spin();
 
 	return 0;
