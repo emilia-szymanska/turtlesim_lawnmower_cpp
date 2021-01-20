@@ -19,14 +19,36 @@ class TurtleLawnmower
   		TurtleLawnmower();
   		~TurtleLawnmower(){};
   		void turtleCallback(const turtlesim::Pose::ConstPtr& msg);
+		void position();
 };
 
 
 TurtleLawnmower::TurtleLawnmower()
 {
+	
+	ros::service::waitForService("/turtle1/teleport_absolute");
+	ros::ServiceClient teleport_client = nh_.serviceClient<turtlesim::TeleportAbsolute>("/turtle1/teleport_absolute");
+	turtlesim::TeleportAbsolute::Request req;
+	turtlesim::TeleportAbsolute::Response resp;
+	req.x 	  = 1;
+	req.y 	  = 0.5;
+	req.theta = 0;
+	
+	teleport_client.call(req, resp);
+	
+	ros::service::waitForService("/clear");
+	ros::ServiceClient clear_client = nh_.serviceClient<std_srvs::Empty>("/clear");
+  	std_srvs::Empty srv;
+  	clear_client.call(srv);
+	
 	pose_sub_ = nh_.subscribe("turtle1/pose", 1, &TurtleLawnmower::turtleCallback, this);
 	cmd_pub_  = nh_.advertise<geometry_msgs::Twist>("turtle1/cmd_vel", 1);
 
+}
+
+
+void TurtleLawnmower::position()
+{
 	ros::ServiceClient teleport_client = nh_.serviceClient<turtlesim::TeleportAbsolute>("/turtle1/teleport_absolute");
 	turtlesim::TeleportAbsolute::Request req;
 	turtlesim::TeleportAbsolute::Response resp;
@@ -45,7 +67,7 @@ void TurtleLawnmower::turtleCallback(const turtlesim::Pose::ConstPtr& msg)
 {
 	ROS_INFO("Turtle lawnmower@ [%f, %f, %f]", msg->x, msg->y, msg->theta);
 	
-	if(msg->y >= 10.5 && (msg->x >= 10 || msg->x <= 1))
+	if(msg->y >= 10.7 && (msg->x >= 10 || msg->x <= 1))
 	{
 		ROS_INFO("Turtle has finished its job! Shutting down the node...");
 		ros::shutdown();
@@ -89,7 +111,8 @@ void TurtleLawnmower::turtleCallback(const turtlesim::Pose::ConstPtr& msg)
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "turtle_lawnmower_node");
-	TurtleLawnmower turle_mower;
+	TurtleLawnmower turtle_mower;
+//	turtle_mower.position();
 	ros::spin();
 
 	return 0;
